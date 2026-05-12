@@ -759,20 +759,44 @@
       justify-content: center;
       font-size: 1.6rem;
       color: var(--accent);
-      animation: pulse 2.5s ease-in-out infinite;
+      -webkit-animation: pulsate-bck 1s ease-in-out infinite both;
+      animation: pulsate-bck 1s ease-in-out infinite both;
     }
 
-    @keyframes pulse {
-
-      0%,
-      100% {
-        box-shadow: 0 0 0 0 var(--accent-glow);
+    @-webkit-keyframes pulsate-bck {
+      0% {
+        -webkit-transform: scale(1);
+        transform: scale(1);
       }
 
       50% {
-        box-shadow: 0 0 0 16px transparent;
+        -webkit-transform: scale(0.6);
+        transform: scale(0.6);
+      }
+
+      100% {
+        -webkit-transform: scale(1);
+        transform: scale(1);
       }
     }
+
+    @keyframes pulsate-bck {
+      0% {
+        -webkit-transform: scale(1);
+        transform: scale(1);
+      }
+
+      50% {
+        -webkit-transform: scale(0.9);
+        transform: scale(0.9);
+      }
+
+      100% {
+        -webkit-transform: scale(1);
+        transform: scale(1);
+      }
+    }
+
 
     .upload-box h3 {
       font-family: 'Space Grotesk', sans-serif;
@@ -1102,12 +1126,12 @@
 
     @media (prefers-reduced-motion: reduce) {
 
-      *,
+      /* *,
       *::before,
       *::after {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
-      }
+      } */
     }
   </style>
 </head>
