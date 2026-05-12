@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片缩放工具</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;600&display=swap"
+    rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0f13;
+      --bg-elevated: #16171d;
+      --bg-card: #1c1d25;
+      --fg: #e8e6e1;
+      --fg-muted: #7a7880;
+      --accent: #e8a849;
+      --accent-dim: rgba(232, 168, 73, 0.15);
+      --accent-glow: rgba(232, 168, 73, 0.3);
+      --border: #2a2b35;
+      --danger: #e85d5d;
+      --success: #5de8a0;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --toolbar-w: 76px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bg-atmosphere {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .bg-atmosphere::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      left: -10%;
+      width: 50vw;
+      height: 50vw;
+      background: radial-gradient(circle, rgba(232, 168, 73, 0.06) 0%, transparent 70%);
+      animation: floatBlob 20s ease-in-out infinite;
+    }
+
+    .bg-atmosphere::after {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      right: -10%;
+      width: 45vw;
+      height: 45vw;
+      background: radial-gradient(circle, rgba(93, 232, 160, 0.04) 0%, transparent 70%);
+      animation: floatBlob 25s ease-in-out infinite reverse;
+    }
+
+    @keyframes floatBlob {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      33% {
+        transform: translate(5%, -8%) scale(1.1);
+      }
+
+      66% {
+        transform: translate(-3%, 5%) scale(0.95);
+      }
+    }
+
+    header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-icon {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, var(--accent), #d4912e);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.82rem;
+      color: var(--bg);
+      box-shadow: 0 2px 12px var(--accent-glow);
+    }
+
+    .header-info {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 0.78rem;
+      color: var(--fg-muted);
+    }
+
+    .header-info span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-info .val {
+      color: var(--fg);
+      font-weight: 600;
+      font-family: 'Space Grotesk', monospace;
+    }
+
+    .shortcut-hint {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.68rem;
+      font-family: 'Space Grotesk', monospace;
+      color: var(--fg-muted);
+    }
+
+    .main-area {
+      position: relative;
+      z-index: 5;
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      width: var(--toolbar-w);
+      background: var(--bg-elevated);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 0;
+      gap: 2px;
+      flex-shrink: 0;
+      z-index: 20;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .toolbar::-webkit-scrollbar {
+      width: 0;
+    }
+
+    .tool-btn {
+      width: 54px;
+      height: 44px;
+      border: none;
+      background: transparent;
+      color: var(--fg-muted);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .tool-btn:hover {
+      background: var(--bg-card);
+      color: var(--fg);
+    }
+
+    .tool-btn:active {
+      transform: scale(0.92);
+    }
+
+    .tool-btn.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .tool-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .tool-btn:disabled:hover {
+      background: transparent;
+      color: var(--fg-muted);
+    }
+
+    .tool-btn.export-btn {
+      color: var(--success);
+    }
+
+    .tool-btn.export-btn:hover:not(:disabled) {
+      background: rgba(93, 232, 160, 0.12);
+      color: var(--success);
+    }
+
+    .tool-btn .tooltip {
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%) translateX(-4px);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      font-size: 0.75rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      font-family: 'Noto Sans SC', sans-serif;
+      z-index: 50;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tool-btn .tooltip::before {
+      content: '';
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-right-color: var(--border);
+    }
+
+    .tool-btn .tooltip::after {
+      content: '';
+      position: absolute;
+      right: calc(100% - 1px);
+      top: 50%;
+      transform: translateY(-50%);
+      border: 4px solid transparent;
+      border-right-color: var(--bg-card);
+    }
+
+    .tool-btn:hover .tooltip {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .tool-btn:disabled:hover .tooltip {
+      opacity: 0;
+    }
+
+    .tooltip-main {
+      font-weight: 600;
+      color: var(--fg);
+      line-height: 1.3;
+    }
+
+    .tooltip-sub {
+      font-size: 0.65rem;
+      color: var(--fg-muted);
+      line-height: 1.3;
+    }
+
+    .tooltip-key {
+      display: inline-block;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0 4px;
+      font-size: 0.6rem;
+      font-family: 'Space Grotesk', monospace;
+      color: var(--accent);
+      margin-left: 2px;
+      vertical-align: middle;
+      line-height: 1.6;
+    }
+
+    .tool-sep {
+      width: 36px;
+      height: 1px;
+      background: var(--border);
+      margin: 5px 0;
+      flex-shrink: 0;
+    }
+
+    .popup-panel {
+      position: absolute;
+      left: calc(var(--toolbar-w) + 8px);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      width: 230px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      transform: translateY(-50%) translateX(-6px);
+      z-index: 25;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .popup-panel.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .panel-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--fg);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-title i {
+      font-size: 0.72rem;
+    }
+
+    .panel-title .icon-accent {
+      color: var(--accent);
+    }
+
+    .panel-title .icon-success {
+      color: var(--success);
+    }
+
+    .panel-close {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      transition: all 0.15s ease;
+    }
+
+    .panel-close:hover {
+      background: rgba(232, 93, 93, 0.15);
+      color: var(--danger);
+    }
+
+    .zoom-big-display {
+      text-align: center;
+      margin-bottom: 14px;
+      padding: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    .zoom-big-number {
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 700;
+      font-size: 1.8rem;
+      color: var(--accent);
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    .zoom-big-label {
+      font-size: 0.65rem;
+      color: var(--fg-muted);
+      margin-top: 4px;
+    }
+
+    .zoom-slider-wrap {
+      margin-bottom: 12px;
+    }
+
+    .zoom-slider-wrap label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      margin-bottom: 8px;
+    }
+
+    .zoom-slider-wrap label .sval {
+      color: var(--accent);
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 600;
+    }
+
+    .zoom-slider-wrap input[type=range],
+    .export-quality-row input[type=range] {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .zoom-slider-wrap input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 0 3px var(--bg-card), 0 0 10px var(--accent-glow);
+      transition: transform 0.15s ease;
+    }
+
+    .zoom-slider-wrap input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .zoom-slider-wrap input[type=range]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 3px solid var(--bg-card);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .zoom-slider-range {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.6rem;
+      color: var(--fg-muted);
+      margin-top: 4px;
+      font-family: 'Space Grotesk', monospace;
+    }
+
+    .zoom-presets-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .zoom-preset-btn {
+      padding: 6px 0;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      font-size: 0.7rem;
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .zoom-preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .zoom-preset-btn.active-preset {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .export-size-info {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .export-size-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent-dim);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .export-size-text {
+      flex: 1;
+    }
+
+    .export-size-text .dim {
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--fg);
+    }
+
+    .export-size-text .sub {
+      font-size: 0.65rem;
+      color: var(--fg-muted);
+      margin-top: 2px;
+    }
+
+    .export-format-row {
+      margin-bottom: 14px;
+    }
+
+    .export-format-label {
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      margin-bottom: 6px;
+    }
+
+    .export-format-options {
+      display: flex;
+      gap: 4px;
+    }
+
+    .format-opt {
+      flex: 1;
+      padding: 6px 0;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      font-size: 0.72rem;
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .format-opt:hover {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .format-opt.active-fmt {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(93, 232, 160, 0.12);
+    }
+
+    .export-quality-row {
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .export-quality-row.visible {
+      display: block;
+    }
+
+    .export-quality-row label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      margin-bottom: 6px;
+    }
+
+    .export-quality-row label .qval {
+      color: var(--success);
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 600;
+    }
+
+    .export-quality-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--success);
+      cursor: pointer;
+      box-shadow: 0 0 0 2px var(--bg-card), 0 0 8px rgba(93, 232, 160, 0.3);
+    }
+
+    .export-quality-row input[type=range]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--success);
+      cursor: pointer;
+      border: 2px solid var(--bg-card);
+    }
+
+    .export-do-btn {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(135deg, var(--success), #3cc97a);
+      border: none;
+      color: var(--bg);
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: 'Noto Sans SC', sans-serif;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .export-do-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(93, 232, 160, 0.3);
+    }
+
+    .export-do-btn:active {
+      transform: scale(0.97);
+    }
+
+    .export-do-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      background: radial-gradient(circle at 50% 50%, rgba(30, 31, 40, 1) 0%, var(--bg) 100%);
+    }
+
+    .canvas-container.grabbing {
+      cursor: grabbing;
+    }
+
+    .canvas-container.no-image {
+      cursor: default;
+    }
+
+    .checker-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.08;
+      background-image:
+        linear-gradient(45deg, #666 25%, transparent 25%),
+        linear-gradient(-45deg, #666 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #666 75%),
+        linear-gradient(-45deg, transparent 75%, #666 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      pointer-events: none;
+    }
+
+    .canvas-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      /* 关键：transform-origin 设为图片中心，所有操作围绕中心进行 */
+      transform-origin: 50% 50%;
+      will-change: transform;
+      transition: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.5));
+    }
+
+    .canvas-image.smooth-transition {
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .upload-prompt {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 6;
+      transition: opacity 0.4s ease;
+    }
+
+    .upload-prompt.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .upload-box {
+      width: 380px;
+      max-width: 85vw;
+      padding: 48px 32px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+      transition: all 0.3s ease;
+      background: rgba(28, 29, 37, 0.5);
+      backdrop-filter: blur(12px);
+    }
+
+    .upload-box:hover,
+    .upload-box.dragover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      transform: scale(1.02);
+    }
+
+    .upload-box .icon-wrap {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      color: var(--accent);
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 var(--accent-glow);
+      }
+
+      50% {
+        box-shadow: 0 0 0 16px transparent;
+      }
+    }
+
+    .upload-box h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .upload-box p {
+      font-size: 0.82rem;
+      color: var(--fg-muted);
+      line-height: 1.6;
+    }
+
+    .upload-box .formats {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .upload-box .formats span {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      font-family: 'Space Grotesk', monospace;
+      color: var(--fg-muted);
+    }
+
+    .sample-btn {
+      margin-top: 4px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-size: 0.82rem;
+      padding: 8px 20px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      font-family: 'Noto Sans SC', sans-serif;
+    }
+
+    .sample-btn:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    .zoom-indicator {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22, 23, 29, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 6px 16px;
+      z-index: 8;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .zoom-indicator.visible {
+      opacity: 1;
+    }
+
+    .zoom-indicator .zoom-val {
+      font-family: 'Space Grotesk', monospace;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--accent);
+      min-width: 52px;
+      text-align: center;
+    }
+
+    .minimap {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 160px;
+      height: 110px;
+      background: rgba(22, 23, 29, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      z-index: 8;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .minimap.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .minimap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .minimap-viewport {
+      position: absolute;
+      border: 1.5px solid var(--accent);
+      background: var(--accent-dim);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    .crosshair {
+      position: absolute;
+      pointer-events: none;
+      z-index: 7;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .crosshair.visible {
+      opacity: 0.3;
+    }
+
+    .crosshair-h,
+    .crosshair-v {
+      position: absolute;
+      background: var(--accent);
+    }
+
+    .crosshair-h {
+      width: 100vw;
+      height: 1px;
+      top: 0;
+      left: -50vw;
+    }
+
+    .crosshair-v {
+      width: 1px;
+      height: 100vh;
+      left: 0;
+      top: -50vh;
+    }
+
+    footer {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px;
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--fg-muted);
+      flex-shrink: 0;
+    }
+
+    footer .status-left,
+    footer .status-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    footer .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px rgba(93, 232, 160, 0.4);
+    }
+
+    footer .status-dot.idle {
+      background: var(--fg-muted);
+      box-shadow: none;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      color: var(--fg);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: toastIn 0.35s ease forwards;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .toast.out {
+      animation: toastOut 0.3s ease forwards;
+    }
+
+    .toast i {
+      color: var(--accent);
+    }
+
+    .toast.success i {
+      color: var(--success);
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes toastOut {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      to {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+    }
+
+    .export-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(14, 15, 19, 0.7);
+      backdrop-filter: blur(6px);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .export-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .export-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .spinner-ring {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--success);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner-text {
+      font-size: 0.85rem;
+      color: var(--fg-muted);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      :root {
+        --toolbar-w: 56px;
+      }
+
+      .tool-btn {
+        width: 42px;
+        height: 38px;
+        font-size: 0.85rem;
+      }
+
+      .minimap {
+        width: 100px;
+        height: 70px;
+      }
+
+      .upload-box {
+        padding: 32px 20px;
+      }
+
+      .header-info {
+        display: none;
+      }
+
+      .popup-panel {
+        width: 190px;
+        left: calc(var(--toolbar-w) + 4px);
+        padding: 12px;
+      }
+
+      .tool-btn .tooltip {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-atmosphere"></div>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+      ZoomView
+    </div>
+    <div class="header-info">
+      <span>尺寸 <span class="val" id="imgDimensions">—</span></span>
+      <span>缩放 <span class="val" id="headerZoom">100%</span></span>
+      <span class="shortcut-hint">滚轮缩放 / 拖拽平移 / R 重置</span>
+    </div>
+  </header>
+
+  <main class="main-area">
+    <nav class="toolbar" aria-label="图片操作工具">
+      <button class="tool-btn" id="btnUpload" aria-label="上传图片">
+        <i class="fa-solid fa-folder-open"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">打开图片</span>
+          <span class="tooltip-sub">选择本地文件或拖放上传 <span class="tooltip-key">O</span></span>
+        </span>
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" id="btnZoomIn" disabled aria-label="放大">
+        <i class="fa-solid fa-plus"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">放大</span>
+          <span class="tooltip-sub">以视图中心放大 25% <span class="tooltip-key">+</span></span>
+        </span>
+      </button>
+      <button class="tool-btn" id="btnZoomOut" disabled aria-label="缩小">
+        <i class="fa-solid fa-minus"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">缩小</span>
+          <span class="tooltip-sub">以视图中心缩小 20% <span class="tooltip-key">-</span></span>
+        </span>
+      </button>
+      <button class="tool-btn" id="btnFit" disabled aria-label="适应窗口">
+        <i class="fa-solid fa-expand"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">适应窗口</span>
+          <span class="tooltip-sub">缩放至完整显示在视口内 <span class="tooltip-key">F</span></span>
+        </span>
+      </button>
+      <button class="tool-btn" id="btnActual" disabled aria-label="实际大小">
+        <i class="fa-solid fa-maximize"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">实际大小</span>
+          <span class="tooltip-sub">恢复到 100% 原始像素 <span class="tooltip-key">1</span></span>
+        </span>
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" id="btnSlider" disabled aria-label="精确缩放">
+        <i class="fa-solid fa-sliders"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">精确缩放</span>
+          <span class="tooltip-sub">滑块调节或选择预设比例</span>
+        </span>
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" id="btnRotateL" disabled aria-label="左旋90度">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">左旋 90°</span>
+          <span class="tooltip-sub">原位逆时针旋转</span>
+        </span>
+      </button>
+      <button class="tool-btn" id="btnRotateR" disabled aria-label="右旋90度">
+        <i class="fa-solid fa-rotate-right"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">右旋 90°</span>
+          <span class="tooltip-sub">原位顺时针旋转</span>
+        </span>
+      </button>
+      <button class="tool-btn" id="btnFlipH" disabled aria-label="水平翻转">
+        <i class="fa-solid fa-left-right"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">水平翻转</span>
+          <span class="tooltip-sub">原位左右镜像翻转</span>
+        </span>
+      </button>
+      <button class="tool-btn" id="btnFlipV" disabled aria-label="垂直翻转">
+        <i class="fa-solid fa-up-down"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">垂直翻转</span>
+          <span class="tooltip-sub">原位上下镜像翻转</span>
+        </span>
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn export-btn" id="btnExport" disabled aria-label="导出图片">
+        <i class="fa-solid fa-download"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">导出图片</span>
+          <span class="tooltip-sub">按当前缩放/旋转导出文件</span>
+        </span>
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" id="btnFullscreen" aria-label="全屏">
+        <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+        <span class="tooltip">
+          <span class="tooltip-main">全屏模式</span>
+          <span class="tooltip-sub">切换浏览器全屏显示</span>
+        </span>
+      </button>
+    </nav>
+
+    <div class="popup-panel" id="zoomPanel">
+      <div class="panel-header">
+        <div class="panel-title"><i class="fa-solid fa-magnifying-glass icon-accent"></i>缩放比例</div>
+        <button class="panel-close" id="zoomPanelClose"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="zoom-big-display">
+        <div class="zoom-big-number" id="zoomBigNumber">100%</div>
+        <div class="zoom-big-label">当前缩放级别</div>
+      </div>
+      <div class="zoom-slider-wrap">
+        <label>拖动调整 <span class="sval" id="sliderVal">100%</span></label>
+        <input type="range" id="zoomSlider" min="5" max="5000" value="100" step="1">
+        <div class="zoom-slider-range"><span>5%</span><span>5000%</span></div>
+      </div>
+      <div class="zoom-presets-grid">
+        <button class="zoom-preset-btn" data-zoom="25">25%</button>
+        <button class="zoom-preset-btn" data-zoom="50">50%</button>
+        <button class="zoom-preset-btn active-preset" data-zoom="100">100%</button>
+        <button class="zoom-preset-btn" data-zoom="200">200%</button>
+        <button class="zoom-preset-btn" data-zoom="500">500%</button>
+        <button class="zoom-preset-btn" data-zoom="1000">1000%</button>
+      </div>
+    </div>
+
+    <div class="popup-panel" id="exportPanel">
+      <div class="panel-header">
+        <div class="panel-title"><i class="fa-solid fa-file-export icon-success"></i>导出设置</div>
+        <button class="panel-close" id="exportPanelClose"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="export-size-info">
+        <div class="export-size-icon"><i class="fa-solid fa-ruler-combined"></i></div>
+        <div class="export-size-text">
+          <div class="dim" id="exportDimText">— × —</div>
+          <div class="sub" id="exportSubText">应用当前缩放后的输出尺寸</div>
+        </div>
+      </div>
+      <div class="export-format-row">
+        <div class="export-format-label">输出格式</div>
+        <div class="export-format-options">
+          <button class="format-opt active-fmt" data-fmt="png">PNG</button>
+          <button class="format-opt" data-fmt="jpeg">JPEG</button>
+          <button class="format-opt" data-fmt="webp">WEBP</button>
+        </div>
+      </div>
+      <div class="export-quality-row" id="qualityRow">
+        <label>压缩质量 <span class="qval" id="qualityVal">92%</span></label>
+        <input type="range" id="qualitySlider" min="10" max="100" value="92" step="1">
+      </div>
+      <button class="export-do-btn" id="exportDoBtn">
+        <i class="fa-solid fa-download"></i>导出图片
+      </button>
+    </div>
+
+    <div class="canvas-container no-image" id="canvasContainer">
+      <div class="checker-bg"></div>
+      <img class="canvas-image" id="canvasImage" alt="预览图片" style="display:none;">
+      <div class="crosshair" id="crosshair">
+        <div class="crosshair-h"></div>
+        <div class="crosshair-v"></div>
+      </div>
+      <div class="upload-prompt" id="uploadPrompt">
+        <div class="upload-box" id="uploadBox">
+          <div class="icon-wrap"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <h3>拖拽图片到此处</h3>
+          <p>或点击选择文件上传<br>支持高分辨率图片</p>
+          <div class="formats">
+            <span>JPG</span><span>PNG</span><span>WEBP</span><span>GIF</span><span>SVG</span><span>BMP</span>
+          </div>
+        </div>
+        <button class="sample-btn" id="sampleBtn">加载示例图片</button>
+      </div>
+      <div class="zoom-indicator" id="zoomIndicator">
+        <span class="zoom-val" id="zoomIndicatorVal">100%</span>
+      </div>
+      <div class="minimap" id="minimap">
+        <img id="minimapImg" alt="缩略图">
+        <div class="minimap-viewport" id="minimapViewport"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="status-left">
+      <div class="status-dot idle" id="statusDot"></div>
+      <span id="statusText">等待加载图片</span>
+    </div>
+    <div class="status-right">
+      <span id="mousePos">X: — Y: —</span>
+      <span>ZoomView v1.0</span>
+    </div>
+  </footer>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <input type="file" id="fileInput" accept="image/*">
+  <div class="export-overlay" id="exportOverlay">
+    <div class="export-spinner">
+      <div class="spinner-ring"></div>
+      <div class="spinner-text">正在生成图片...</div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      imageLoaded: false,
+      scale: 1,
+      minScale: 0.02,
+      maxScale: 50,
+      /* translateX/Y 现在表示图片中心在画布中的坐标 */
+      translateX: 0,
+      translateY: 0,
+      rotation: 0,
+      flipH: 1,
+      flipV: 1,
+      isDragging: false,
+      dragStartX: 0, dragStartY: 0,
+      dragStartTX: 0, dragStartTY: 0,
+      naturalW: 0, naturalH: 0,
+      zoomPanelOpen: false,
+      exportPanelOpen: false,
+      exportFormat: 'png',
+      exportQuality: 0.92,
+      zoomIndicatorTimer: null,
+    };
+
+    const $ = (s) => document.querySelector(s);
+    const canvasContainer = $('#canvasContainer');
+    const canvasImage = $('#canvasImage');
+    const uploadPrompt = $('#uploadPrompt');
+    const uploadBox = $('#uploadBox');
+    const fileInput = $('#fileInput');
+    const crosshair = $('#crosshair');
+    const zoomIndicator = $('#zoomIndicator');
+    const zoomIndicatorVal = $('#zoomIndicatorVal');
+    const minimap = $('#minimap');
+    const minimapImg = $('#minimapImg');
+    const minimapViewport = $('#minimapViewport');
+    const zoomPanel = $('#zoomPanel');
+    const zoomSlider = $('#zoomSlider');
+    const toastContainer = $('#toastContainer');
+    const exportPanel = $('#exportPanel');
+    const exportOverlay = $('#exportOverlay');
+
+    const btnUpload = $('#btnUpload');
+    const btnZoomIn = $('#btnZoomIn');
+    const btnZoomOut = $('#btnZoomOut');
+    const btnFit = $('#btnFit');
+    const btnActual = $('#btnActual');
+    const btnSlider = $('#btnSlider');
+    const btnRotateL = $('#btnRotateL');
+    const btnRotateR = $('#btnRotateR');
+    const btnFlipH = $('#btnFlipH');
+    const btnFlipV = $('#btnFlipV');
+    const btnExport = $('#btnExport');
+    const btnFullscreen = $('#btnFullscreen');
+
+    const imgDimensions = $('#imgDimensions');
+    const headerZoom = $('#headerZoom');
+    const statusDot = $('#statusDot');
+    const statusText = $('#statusText');
+    const mousePos = $('#mousePos');
+    const sliderVal = $('#sliderVal');
+    const zoomBigNumber = $('#zoomBigNumber');
+    const exportDimText = $('#exportDimText');
+    const exportSubText = $('#exportSubText');
+    const qualityRow = $('#qualityRow');
+    const qualityVal = $('#qualityVal');
+    const qualitySlider = $('#qualitySlider');
+
+    function positionPanel(panel, btn) {
+      const mainRect = document.querySelector('.main-area').getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      panel.style.top = (btnRect.top - mainRect.top + btnRect.height / 2) + 'px';
+    }
+
+    function showToast(msg, icon = 'fa-circle-info', type = '') {
+      const t = document.createElement('div');
+      t.className = 'toast' + (type ? ' ' + type : '');
+      t.innerHTML = `<i class="fa-solid ${icon}"></i>${msg}`;
+      toastContainer.appendChild(t);
+      setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 2500);
+    }
+
+    function setToolButtonsEnabled(en) {
+      [btnZoomIn, btnZoomOut, btnFit, btnActual, btnSlider,
+        btnRotateL, btnRotateR, btnFlipH, btnFlipV, btnExport].forEach(b => b.disabled = !en);
+    }
+
+    function closeAllPanels() {
+      if (state.zoomPanelOpen) { state.zoomPanelOpen = false; zoomPanel.classList.remove('open'); btnSlider.classList.remove('active'); }
+      if (state.exportPanelOpen) { state.exportPanelOpen = false; exportPanel.classList.remove('open'); btnExport.classList.remove('active'); }
+    }
+
+    function loadImage(src) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        state.naturalW = img.naturalWidth;
+        state.naturalH = img.naturalHeight;
+        canvasImage.src = src;
+        canvasImage.style.display = 'block';
+        minimapImg.src = src;
+        state.imageLoaded = true;
+        state.rotation = 0; state.flipH = 1; state.flipV = 1;
+        canvasContainer.classList.remove('no-image');
+        uploadPrompt.classList.add('hidden');
+        minimap.classList.add('visible');
+        setToolButtonsEnabled(true);
+        imgDimensions.textContent = `${state.naturalW} × ${state.naturalH}`;
+        statusDot.classList.remove('idle');
+        statusText.textContent = `已加载 · ${state.naturalW}×${state.naturalH}`;
+        fitToView();
+        updateExportInfo();
+        showToast('图片加载成功', 'fa-circle-check', 'success');
+      };
+      img.onerror = () => showToast('图片加载失败，请重试', 'fa-circle-exclamation');
+      img.src = src;
+    }
+
+    /* 旋转后的视觉包围盒尺寸 */
+    function getLogicalSize() {
+      const rad = Math.abs(state.rotation * Math.PI / 180) % Math.PI;
+      const is90 = (rad > Math.PI / 4 && rad < 3 * Math.PI / 4);
+      return { w: is90 ? state.naturalH : state.naturalW, h: is90 ? state.naturalW : state.naturalH };
+    }
+
+    /* 将图片中心定位到画布中心 */
+    function recenterImage() {
+      const cr = canvasContainer.getBoundingClientRect();
+      state.translateX = cr.width / 2;
+      state.translateY = cr.height / 2;
+    }
+
+    function applyTransform(smooth = false) {
+      if (smooth) {
+        canvasImage.classList.add('smooth-transition');
+        setTimeout(() => canvasImage.classList.remove('smooth-transition'), 320);
+      }
+      /* translate 定位中心，scale/rotate/flip 都围绕中心 (50% 50%) 进行 */
+      canvasImage.style.transform =
+        `translate(${state.translateX}px, ${state.translateY}px) translate(-50%, -50%) scale(${state.flipH * state.scale}, ${state.flipV * state.scale}) rotate(${state.rotation}deg)`;
+      updateZoomDisplay();
+      updateMinimap();
+      updateExportInfo();
+      updatePresetHighlight();
+    }
+
+    function updateZoomDisplay() {
+      const pct = Math.round(state.scale * 100);
+      const text = pct + '%';
+      headerZoom.textContent = text;
+      zoomIndicatorVal.textContent = text;
+      sliderVal.textContent = text;
+      zoomBigNumber.textContent = text;
+      zoomSlider.value = Math.min(5000, Math.max(5, pct));
+      zoomIndicator.classList.add('visible');
+      clearTimeout(state.zoomIndicatorTimer);
+      state.zoomIndicatorTimer = setTimeout(() => zoomIndicator.classList.remove('visible'), 1200);
+    }
+
+    function updatePresetHighlight() {
+      const pct = Math.round(state.scale * 100);
+      document.querySelectorAll('.zoom-preset-btn').forEach(b => {
+        b.classList.toggle('active-preset', parseInt(b.dataset.zoom) === pct);
+      });
+    }
+
+    function updateMinimap() {
+      if (!state.imageLoaded) return;
+      const cr = canvasContainer.getBoundingClientRect();
+      const { w: lw, h: lh } = getLogicalSize();
+      const sw = lw * state.scale, sh = lh * state.scale;
+      /* 图片边界（基于中心定位） */
+      const imgLeft = state.translateX - sw / 2;
+      const imgTop = state.translateY - sh / 2;
+      const vl = Math.max(0, (0 - imgLeft) / sw);
+      const vt = Math.max(0, (0 - imgTop) / sh);
+      const vr = Math.min(1, (cr.width - imgLeft) / sw);
+      const vb = Math.min(1, (cr.height - imgTop) / sh);
+      const mw = minimap.clientWidth, mh = minimap.clientHeight;
+      const ir = lw / lh, mr = mw / mh;
+      let tw, th, tx, ty;
+      if (ir > mr) { tw = mw; th = mw / ir; tx = 0; ty = (mh - th) / 2; }
+      else { th = mh; tw = mh * ir; tx = (mw - tw) / 2; ty = 0; }
+      minimapViewport.style.left = (tx + vl * tw) + 'px';
+      minimapViewport.style.top = (ty + vt * th) + 'px';
+      minimapViewport.style.width = Math.max(2, (vr - vl) * tw) + 'px';
+      minimapViewport.style.height = Math.max(2, (vb - vt) * th) + 'px';
+    }
+
+    function updateExportInfo() {
+      if (!state.imageLoaded) return;
+      const ow = Math.round(state.naturalW * state.scale);
+      const oh = Math.round(state.naturalH * state.scale);
+      exportDimText.textContent = `${ow} × ${oh}`;
+      const px = ow * oh;
+      let est;
+      if (state.exportFormat === 'png') est = px * 3 / 1024 / 1024;
+      else est = px * 3 * state.exportQuality * 0.15 / 1024 / 1024;
+      let s;
+      if (est > 100) s = `约 ${est.toFixed(0)} MB`;
+      else if (est > 1) s = `约 ${est.toFixed(1)} MB`;
+      else s = `约 ${(est * 1024).toFixed(0)} KB`;
+      exportSubText.textContent = `${s} · 含缩放/旋转/翻转`;
+    }
+
+    function fitToView() {
+      const cr = canvasContainer.getBoundingClientRect();
+      const pad = 40;
+      const { w: lw, h: lh } = getLogicalSize();
+      state.scale = Math.max(state.minScale, Math.min((cr.width - pad * 2) / lw, (cr.height - pad * 2) / lh, 1));
+      recenterImage();
+      applyTransform(true);
+    }
+
+    function actualSize() {
+      state.scale = 1;
+      recenterImage();
+      applyTransform(true);
+    }
+
+    /* 以某点为锚点缩放 */
+    function zoomAtPoint(ns, cx, cy, smooth) {
+      ns = Math.max(state.minScale, Math.min(state.maxScale, ns));
+      const r = ns / state.scale;
+      state.translateX = cx - (cx - state.translateX) * r;
+      state.translateY = cy - (cy - state.translateY) * r;
+      state.scale = ns;
+      applyTransform(smooth);
+    }
+
+    function zoomCenter(delta) {
+      const cr = canvasContainer.getBoundingClientRect();
+      zoomAtPoint(state.scale * (delta > 0 ? 1.25 : 0.8), cr.width / 2, cr.height / 2, true);
+    }
+
+    /* ===== 滚轮缩放 ===== */
+    canvasContainer.addEventListener('wheel', (e) => {
+      if (!state.imageLoaded) return;
+      e.preventDefault();
+      const cr = canvasContainer.getBoundingClientRect();
+      const cx = e.clientX - cr.left, cy = e.clientY - cr.top;
+      zoomAtPoint(state.scale * (e.deltaY < 0 ? 1.12 : 0.89), cx, cy, false);
+      crosshair.style.left = cx + 'px'; crosshair.style.top = cy + 'px';
+      crosshair.classList.add('visible');
+      clearTimeout(crosshair._t);
+      crosshair._t = setTimeout(() => crosshair.classList.remove('visible'), 600);
+    }, { passive: false });
+
+    /* ===== 拖拽平移 ===== */
+    canvasContainer.addEventListener('mousedown', (e) => {
+      if (!state.imageLoaded || e.button !== 0) return;
+      closeAllPanels();
+      state.isDragging = true;
+      state.dragStartX = e.clientX; state.dragStartY = e.clientY;
+      state.dragStartTX = state.translateX; state.dragStartTY = state.translateY;
+      canvasContainer.classList.add('grabbing');
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (state.imageLoaded) {
+        const cr = canvasContainer.getBoundingClientRect();
+        const mx = e.clientX - cr.left, my = e.clientY - cr.top;
+        /* 反算图片像素坐标（基于中心定位） */
+        const imgLeft = state.translateX - state.naturalW * state.scale / 2;
+        const imgTop = state.translateY - state.naturalH * state.scale / 2;
+        const ix = Math.round((mx - imgLeft) / state.scale);
+        const iy = Math.round((my - imgTop) / state.scale);
+        mousePos.textContent = (ix >= 0 && ix < state.naturalW && iy >= 0 && iy < state.naturalH)
+          ? `X: ${ix}  Y: ${iy}` : `X: —  Y: —`;
+      }
+      if (!state.isDragging) return;
+      state.translateX = state.dragStartTX + (e.clientX - state.dragStartX);
+      state.translateY = state.dragStartTY + (e.clientY - state.dragStartY);
+      applyTransform(false);
+    });
+    window.addEventListener('mouseup', () => {
+      if (state.isDragging) { state.isDragging = false; canvasContainer.classList.remove('grabbing'); }
+    });
+
+    /* ===== 触摸 ===== */
+    let lastTD = 0;
+    canvasContainer.addEventListener('touchstart', (e) => {
+      if (!state.imageLoaded) return;
+      if (e.touches.length === 1) {
+        closeAllPanels(); state.isDragging = true;
+        state.dragStartX = e.touches[0].clientX; state.dragStartY = e.touches[0].clientY;
+        state.dragStartTX = state.translateX; state.dragStartTY = state.translateY;
+      } else if (e.touches.length === 2) {
+        state.isDragging = false;
+        lastTD = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+      }
+      e.preventDefault();
+    }, { passive: false });
+    canvasContainer.addEventListener('touchmove', (e) => {
+      if (!state.imageLoaded) return;
+      if (e.touches.length === 1 && state.isDragging) {
+        state.translateX = state.dragStartTX + (e.touches[0].clientX - state.dragStartX);
+        state.translateY = state.dragStartTY + (e.touches[0].clientY - state.dragStartY);
+        applyTransform(false);
+      } else if (e.touches.length === 2 && lastTD > 0) {
+        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+        const cr = canvasContainer.getBoundingClientRect();
+        zoomAtPoint(state.scale * (d / lastTD),
+          (e.touches[0].clientX + e.touches[1].clientX) / 2 - cr.left,
+          (e.touches[0].clientY + e.touches[1].clientY) / 2 - cr.top, false);
+        lastTD = d;
+      }
+      e.preventDefault();
+    }, { passive: false });
+    canvasContainer.addEventListener('touchend', () => { state.isDragging = false; lastTD = 0; });
+
+    /* ===== 文件上传 ===== */
+    uploadBox.addEventListener('click', () => fileInput.click());
+    btnUpload.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { const f = e.target.files[0]; if (f) handleFile(f); fileInput.value = ''; });
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) { showToast('请选择有效的图片文件', 'fa-circle-exclamation'); return; }
+      const r = new FileReader();
+      r.onload = (e) => loadImage(e.target.result);
+      r.readAsDataURL(file);
+    }
+    uploadBox.addEventListener('dragover', (e) => { e.preventDefault(); uploadBox.classList.add('dragover'); });
+    uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('dragover'));
+    uploadBox.addEventListener('drop', (e) => { e.preventDefault(); uploadBox.classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+    canvasContainer.addEventListener('dragover', (e) => e.preventDefault());
+    canvasContainer.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) handleFile(f); });
+
+    $('#sampleBtn').addEventListener('click', () => {
+      loadImage(`https://picsum.photos/seed/${Math.random().toString(36).slice(2, 8)}/1920/1280.jpg`);
+    });
+
+    /* ===== 工具按钮 ===== */
+    btnZoomIn.addEventListener('click', () => zoomCenter(1));
+    btnZoomOut.addEventListener('click', () => zoomCenter(-1));
+    btnFit.addEventListener('click', () => { closeAllPanels(); fitToView(); });
+    btnActual.addEventListener('click', () => { closeAllPanels(); actualSize(); });
+
+    /* ===== 缩放面板 ===== */
+    btnSlider.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.exportPanelOpen) { state.exportPanelOpen = false; exportPanel.classList.remove('open'); btnExport.classList.remove('active'); }
+      state.zoomPanelOpen = !state.zoomPanelOpen;
+      zoomPanel.classList.toggle('open', state.zoomPanelOpen);
+      btnSlider.classList.toggle('active', state.zoomPanelOpen);
+      positionPanel(zoomPanel, btnSlider);
+    });
+    $('#zoomPanelClose').addEventListener('click', (e) => {
+      e.stopPropagation(); state.zoomPanelOpen = false; zoomPanel.classList.remove('open'); btnSlider.classList.remove('active');
+    });
+    zoomSlider.addEventListener('input', (e) => {
+      const cr = canvasContainer.getBoundingClientRect();
+      zoomAtPoint(parseInt(e.target.value) / 100, cr.width / 2, cr.height / 2, false);
+    });
+    document.querySelectorAll('.zoom-preset-btn').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cr = canvasContainer.getBoundingClientRect();
+        zoomAtPoint(parseInt(b.dataset.zoom) / 100, cr.width / 2, cr.height / 2, true);
+      });
+    });
+
+    /* ===== 导出面板 ===== */
+    btnExport.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.zoomPanelOpen) { state.zoomPanelOpen = false; zoomPanel.classList.remove('open'); btnSlider.classList.remove('active'); }
+      state.exportPanelOpen = !state.exportPanelOpen;
+      exportPanel.classList.toggle('open', state.exportPanelOpen);
+      btnExport.classList.toggle('active', state.exportPanelOpen);
+      positionPanel(exportPanel, btnExport);
+      if (state.exportPanelOpen) updateExportInfo();
+    });
+    $('#exportPanelClose').addEventListener('click', (e) => {
+      e.stopPropagation(); state.exportPanelOpen = false; exportPanel.classList.remove('open'); btnExport.classList.remove('active');
+    });
+    document.querySelectorAll('.format-opt').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.format-opt').forEach(x => x.classList.remove('active-fmt'));
+        b.classList.add('active-fmt');
+        state.exportFormat = b.dataset.fmt;
+        qualityRow.classList.toggle('visible', state.exportFormat !== 'png');
+        updateExportInfo();
+      });
+    });
+    qualitySlider.addEventListener('input', (e) => {
+      state.exportQuality = parseInt(e.target.value) / 100;
+      qualityVal.textContent = e.target.value + '%';
+      updateExportInfo();
+    });
+
+    /* ===== 执行导出 ===== */
+    $('#exportDoBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!state.imageLoaded) return;
+      const ow = Math.round(state.naturalW * state.scale);
+      const oh = Math.round(state.naturalH * state.scale);
+      if (ow > 16000 || oh > 16000) {
+        showToast(`导出尺寸 ${ow}×${oh} 过大，请降低缩放比例`, 'fa-triangle-exclamation'); return;
+      }
+      exportOverlay.classList.add('active');
+      requestAnimationFrame(() => setTimeout(() => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = ow; c.height = oh;
+          const ctx = c.getContext('2d');
+          if (state.exportFormat === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, ow, oh); }
+          ctx.save();
+          ctx.translate(ow / 2, oh / 2);
+          ctx.rotate(state.rotation * Math.PI / 180);
+          ctx.scale(state.flipH, state.flipV);
+          ctx.drawImage(canvasImage, -ow / 2, -oh / 2, ow, oh);
+          ctx.restore();
+          const mime = `image/${state.exportFormat}`;
+          const q = state.exportFormat !== 'png' ? state.exportQuality : undefined;
+          c.toBlob((blob) => {
+            if (!blob) { exportOverlay.classList.remove('active'); showToast('导出失败', 'fa-circle-exclamation'); return; }
+            const u = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.download = `zoomview_${ow}x${oh}.${state.exportFormat === 'jpeg' ? 'jpg' : state.exportFormat}`;
+            a.href = u; document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(u);
+            exportOverlay.classList.remove('active');
+            showToast(`导出成功 · ${(blob.size / 1024 / 1024).toFixed(2)} MB`, 'fa-circle-check', 'success');
+            state.exportPanelOpen = false; exportPanel.classList.remove('open'); btnExport.classList.remove('active');
+          }, mime, q);
+        } catch (err) { exportOverlay.classList.remove('active'); showToast('导出出错：' + err.message, 'fa-circle-exclamation'); }
+      }, 100));
+    });
+
+    /* ===== 旋转（原位，围绕中心，不移动） ===== */
+    btnRotateL.addEventListener('click', () => {
+      state.rotation = (state.rotation - 90) % 360;
+      applyTransform(true);
+      showToast('左旋 90°', 'fa-rotate-left');
+    });
+    btnRotateR.addEventListener('click', () => {
+      state.rotation = (state.rotation + 90) % 360;
+      applyTransform(true);
+      showToast('右旋 90°', 'fa-rotate-right');
+    });
+
+    /* ===== 翻转（原位，围绕中心，不移动） ===== */
+    btnFlipH.addEventListener('click', () => {
+      state.flipH *= -1;
+      applyTransform(true);
+      showToast('水平翻转', 'fa-left-right');
+    });
+    btnFlipV.addEventListener('click', () => {
+      state.flipV *= -1;
+      applyTransform(true);
+      showToast('垂直翻转', 'fa-up-down');
+    });
+
+    /* ===== 全屏 ===== */
+    btnFullscreen.addEventListener('click', () => {
+      if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(() => { }); showToast('已进入全屏', 'fa-expand'); }
+      else { document.exitFullscreen(); showToast('已退出全屏', 'fa-compress'); }
+    });
+
+    /* ===== 点击外部关闭面板 ===== */
+    document.addEventListener('click', (e) => {
+      if (state.zoomPanelOpen && !zoomPanel.contains(e.target) && e.target !== btnSlider && !btnSlider.contains(e.target)) {
+        state.zoomPanelOpen = false; zoomPanel.classList.remove('open'); btnSlider.classList.remove('active');
+      }
+      if (state.exportPanelOpen && !exportPanel.contains(e.target) && e.target !== btnExport && !btnExport.contains(e.target)) {
+        state.exportPanelOpen = false; exportPanel.classList.remove('open'); btnExport.classList.remove('active');
+      }
+    });
+    zoomPanel.addEventListener('click', (e) => e.stopPropagation());
+    exportPanel.addEventListener('click', (e) => e.stopPropagation());
+
+    /* ===== 键盘快捷键 ===== */
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      switch (e.key) {
+        case '+': case '=':
+          if (state.imageLoaded) { e.preventDefault(); zoomCenter(1); } break;
+        case '-': case '_':
+          if (state.imageLoaded) { e.preventDefault(); zoomCenter(-1); } break;
+        case '0': case 'f': case 'F':
+          if (state.imageLoaded) { e.preventDefault(); fitToView(); } break;
+        case '1':
+          if (state.imageLoaded) { e.preventDefault(); actualSize(); } break;
+        case 'r': case 'R':
+          if (state.imageLoaded) {
+            e.preventDefault();
+            state.rotation = 0; state.flipH = 1; state.flipV = 1;
+            fitToView();
+            showToast('已重置视图', 'fa-arrow-rotate-right');
+          } break;
+        case 'o': case 'O':
+          e.preventDefault(); fileInput.click(); break;
+        case 'Escape':
+          closeAllPanels(); break;
+      }
+    });
+
+    /* ===== 窗口缩放 ===== */
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (state.imageLoaded) { recenterImage(); applyTransform(false); }
+        if (state.zoomPanelOpen) positionPanel(zoomPanel, btnSlider);
+        if (state.exportPanelOpen) positionPanel(exportPanel, btnExport);
+      }, 150);
+    });
+
+    /* ===== 双击切换 ===== */
+    canvasContainer.addEventListener('dblclick', () => {
+      if (!state.imageLoaded) return;
+      Math.abs(state.scale - 1) < 0.01 ? fitToView() : actualSize();
+    });
+  </script>
+</body>
+
+</html>
